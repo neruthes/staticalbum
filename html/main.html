@@ -1,0 +1,156 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Static Album</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+            text-rendering: optimizeLegibility;
+        }
+
+        html,
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif, 'PingFang SC', 'Noto Sans CJK SC';
+            padding: 0px;
+            margin: 0px;
+        }
+
+        .header {
+            padding: 30px 0 10px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .content-albums {
+            /* max-width: 700px; */
+            padding: 15px 15px 50px;
+            margin: 0 auto;
+        }
+
+        .albumslist-album-item {
+            border: 1px solid #666;
+            padding: 15px;
+            margin: 0 0 15px;
+        }
+
+        .album--tracks {
+            padding: 15px 0;
+        }
+
+        .albumslist-album-item[data-expanded="collapsed"] .album--tracks {
+            display: none;
+        }
+
+        .albumTrackItem {
+            padding: 0 0 7px;
+        }
+
+        .album--betterPath {
+            font-size: 18px;
+            /* cursor: pointer; */
+        }
+
+        .album-item-img-a {
+            display: inline-block;
+            margin: 0 20px 20px 0;
+        }
+        .album-item-img-a img {
+            display: block;
+            height: 320px;
+        }
+
+        .footer {
+            font-size: 14px;
+            color: #999;
+            text-align: center;
+            padding: 15px 15px 250px;
+        }
+    </style>
+    <style>
+        .ttfamily {
+            font-family: 'JetBrains Mono NL', 'Inconsolata', 'Ubuntu Mono', 'Menlo', 'Source Code Pro', monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cont">
+        <div class="header">
+            <h1>Static Album</h1>
+        </div>
+        <div class="content">
+            <div class="content-albums"></div>
+            <div class="content-queue"></div>
+        </div>
+        <div class="footer">
+            This webpage is a stand-alone program for image file indexing.<br>
+            This program ("StaticAlbum") is a free software (GNU GPL 2.0).<br>
+            You may get its source code following <a href="https://github.com/neruthes/staticalbum">this link</a>.
+        </div>
+    </div>
+
+    <script>
+        window.app = {};
+        app.renderAlbum = function (albumName) {
+            return `<div class="albumslist-album-item">
+                <div class="album--betterPath">
+                    ${albumName.replace(/\//g, ' / ')}
+                </div>
+                <div>
+                    ${app.renderAlbumImages(albumName)}
+                </div>
+            </div>`;
+        }
+        app.renderAlbumImages = function (albumName) {
+            console.log(`Working on ${albumName}`);
+            return serverImageFiles.filter(function (line) {
+                return line.startsWith(albumName + '/');
+            }).map(function (line) {
+                const revarr = line.split('/').reverse();
+                revarr[0] = '.tbcache/' + revarr[0];
+                const realsrc = revarr.reverse().join('/');
+                return `<a class="album-item-img-a" href="${line}">
+                    <img src="${ realsrc }">
+                </a>`;
+            }).join('');
+        };
+        app.renderAlbumsList = function () {
+            return serverAlbumsArr.map(app.renderAlbum).join('');
+        };
+    </script>
+    <script>
+        const initializeAlbumContext = function (findTxt) {
+            window.findTxt = findTxt;
+            window.serverImageFiles = findTxt.trim().split('\n').filter(function (line) {
+                return line.match(/\.(png|jpg|jpeg|gif)$/i);
+            }).filter(function (line) {
+                return line.indexOf('.tbcache') === -1;
+            });
+
+            // Generate albums list
+            const serverAlbumsMap = {};
+            serverImageFiles.map(function (line) {
+                const dirname = line.split('/').reverse().slice(1).reverse().join('/');
+                if (!dirname.endsWith('.tbcache')) {
+                    serverAlbumsMap[dirname] = dirname;
+                };
+            });
+            window.serverAlbumsArr = Object.keys(serverAlbumsMap);
+            document.querySelector('.content-albums').innerHTML = app.renderAlbumsList();
+        };
+
+        const indexXhr = new XMLHttpRequest();
+        indexXhr.open('GET', '.find.txt');
+        indexXhr.send();
+        indexXhr.addEventListener('load', function () {
+            initializeAlbumContext(indexXhr.responseText);
+        });
+
+    </script>
+</body>
+
+</html>

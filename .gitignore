@@ -1,0 +1,4 @@
+dist
+install_dirs.txt
+
+local_deploy.sh
