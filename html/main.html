@@ -26,7 +26,6 @@
         }
 
         .content-albums {
-            /* max-width: 700px; */
             padding: 15px 15px 50px;
             margin: 0 auto;
         }
@@ -50,17 +49,29 @@
         }
 
         .album--betterPath {
-            font-size: 18px;
+            font-size: 24px;
+            font-weight: 600;
             /* cursor: pointer; */
+        }
+
+        .album--item-control {
+            padding: 10px 0;
         }
 
         .album-item-img-a {
             display: inline-block;
             margin: 0 20px 20px 0;
         }
-        .album-item-img-a img {
+
+        .albumslist-album-item[data-enlarge-state="large"] .album-item-img-a img {
             display: block;
-            height: 320px;
+            max-height: 90vh;
+            max-width: 90vw;
+        }
+
+        .albumslist-album-item[data-enlarge-state="small"] .album-item-img-a img {
+            display: block;
+            height: 200px;
         }
 
         .footer {
@@ -69,11 +80,13 @@
             text-align: center;
             padding: 15px 15px 250px;
         }
+
     </style>
     <style>
         .ttfamily {
             font-family: 'JetBrains Mono NL', 'Inconsolata', 'Ubuntu Mono', 'Menlo', 'Source Code Pro', monospace;
         }
+
     </style>
 </head>
 
@@ -95,10 +108,31 @@
 
     <script>
         window.app = {};
+        app.globalEventHandlers = {};
+        app.globalEventHandlers.didClickEnlargeShrinkAlbumBtn = function (e) {
+            const albumName = e.target.getAttribute('data-album-name');
+            console.log(`Enlarging or shrinking '${albumName}'`);
+            const albumNode = document.querySelector(`.albumslist-album-item[data-album-name="${albumName}"]`);
+            const state = albumNode.getAttribute('data-enlarge-state');
+            albumNode.setAttribute('data-enlarge-state', state === 'small' ? 'large' : 'small');
+            document.querySelectorAll(`.albumslist-album-item img[data-album-name="${albumName}"]`).forEach(function (imgNode) {
+                console.log(imgNode);
+                imgNode.setAttribute('src', imgNode.getAttribute(state === 'small' ? 'data-full-src' : 'data-thumbnail-src'));
+            });
+        };
+        app.attachGlobalEventHandlers = function () {
+            // Attach event listeners
+            document.querySelectorAll('button.js-btn-enlarge').forEach(function (btn) {
+                btn.addEventListener('click', app.globalEventHandlers.didClickEnlargeShrinkAlbumBtn);
+            });
+        };
         app.renderAlbum = function (albumName) {
-            return `<div class="albumslist-album-item">
+            return `<div class="albumslist-album-item" data-album-name="${albumName}" data-enlarge-state="small">
                 <div class="album--betterPath">
                     ${albumName.replace(/\//g, ' / ')}
+                </div>
+                <div class="album--item-control">
+                    <button class="js-btn-enlarge" data-album-name="${albumName}">Enlarge/Shrink</button>
                 </div>
                 <div>
                     ${app.renderAlbumImages(albumName)}
@@ -108,13 +142,27 @@
         app.renderAlbumImages = function (albumName) {
             console.log(`Working on ${albumName}`);
             return serverImageFiles.filter(function (line) {
+                if (albumName === '@' && line.indexOf('/') === -1) {
+                    return true;
+                };
                 return line.startsWith(albumName + '/');
             }).map(function (line) {
-                const revarr = line.split('/').reverse();
-                revarr[0] = '.tbcache/' + revarr[0];
-                const realsrc = revarr.reverse().join('/');
-                return `<a class="album-item-img-a" href="${line}">
-                    <img src="${ realsrc }">
+                let realsrc;
+                if (albumName === '@') {
+                    realsrc = '.tbcache/' + line;
+                    console.log(realsrc);
+                } else {
+                    const revarr = line.split('/').reverse();
+                    revarr[0] = '.tbcache/' + revarr[0];
+                    realsrc = revarr.reverse().join('/');
+                }
+                return `<a class="album-item-img-a" href="${line}" data-album-name="${albumName}">
+                    <img
+                        src="${realsrc}"
+                        data-album-name="${albumName}"
+                        data-full-src="${realsrc.replace('.tbcache/', '')}"
+                        data-thumbnail-src="${realsrc}"
+                    >
                 </a>`;
             }).join('');
         };
@@ -128,19 +176,25 @@
             window.serverImageFiles = findTxt.trim().split('\n').filter(function (line) {
                 return line.match(/\.(png|jpg|jpeg|gif)$/i);
             }).filter(function (line) {
-                return line.indexOf('.tbcache') === -1;
+                return line.indexOf('.tbcache') === -1;     // Ignore thumbnails generated through tbcache
             });
 
             // Generate albums list
             const serverAlbumsMap = {};
             serverImageFiles.map(function (line) {
-                const dirname = line.split('/').reverse().slice(1).reverse().join('/');
+                let dirname = line.split('/').reverse().slice(1).reverse().join('/');
+                console.log(`dirname: <${dirname}>`);
                 if (!dirname.endsWith('.tbcache')) {
+                    if (dirname === '') {
+                        dirname = '@';          // Use @ to represent apex album
+                    };
                     serverAlbumsMap[dirname] = dirname;
                 };
             });
             window.serverAlbumsArr = Object.keys(serverAlbumsMap);
             document.querySelector('.content-albums').innerHTML = app.renderAlbumsList();
+
+            app.attachGlobalEventHandlers();
         };
 
         const indexXhr = new XMLHttpRequest();
