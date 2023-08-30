@@ -1,6 +1,6 @@
 #!/bin/bash
 
-REPODIR="$PWD"
+REPODIR="$(dirname "$0")"
 
 case $1 in
     build)
@@ -18,10 +18,15 @@ case $1 in
         fi
         IFS=$'\n'
         for idir in $install_dirs; do
-            echo "[INFO] Installing 'album.html' to '$idir'."
-            cat $REPODIR/dist/album.html > $idir/album.html
-            cd $idir && find | cut -c3- | sort > .find.txt
+            bash "$0" installtodir "$idir"
         done
+        ;;
+
+    itd|installtodir)
+        idir="$(realpath "$2")"
+        echo "[INFO] Installing 'album.html' to '$idir'."
+        cat $REPODIR/dist/album.html > $idir/album.html
+        cd $idir && find | cut -c3- | sort > .find.txt
         ;;
 
     easy_install)
